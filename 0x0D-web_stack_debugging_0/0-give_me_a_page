@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
-#Starting apache2 server
+# Starts the Apache2 server
 
-service apache2 start
+# Check if Apache2 is already running
+if systemctl is-active --quiet apache2; then
+    echo "Apache2 is already running."
+else
+    # Start Apache2 service
+    sudo service apache2 start
+    echo "Apache2 started successfully."
+fi
