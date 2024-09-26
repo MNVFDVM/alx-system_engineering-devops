@@ -1,38 +1,48 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# This script installs Nginx, configures it to listen on port 80, and ensures it's running
 
-# Install Nginx if it's not installed
-if ! command -v nginx &> /dev/null
-then
-    echo "Nginx not found. Installing Nginx..."
-    apt-get update
-    apt-get install -y nginx
+# Ensure script is executed with root privileges
+if [ "$(id -u)" -ne 0 ]; then
+    echo "This script must be run as root" >&2
+    exit 1
 fi
 
-# Ensure Nginx is listening on port 80
-echo "Ensuring Nginx is listening on port 80..."
-sed -i '/listen 80 default_server;/d' /etc/nginx/sites-available/default
-sed -i '/listen \[::\]:80 default_server;/d' /etc/nginx/sites-available/default
+# Install Nginx if it's not installed
+if ! command -v nginx &> /dev/null; then
+    echo "Installing Nginx..."
+    apt-get update && apt-get install -y nginx
+fi
 
-# Re-add the correct listen directives
-echo "server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    root /var/www/html;
-    index index.html;
-    server_name _;
-    location / {
-        try_files \$uri \$uri/ =404;
-    }
-}" > /etc/nginx/sites-available/default
+# Configure Nginx to listen on port 80 for both IPv4 and IPv6
+NGINX_CONF="/etc/nginx/sites-available/default"
 
-# Restart Nginx to apply changes
+if [ -f "$NGINX_CONF" ]; then
+    echo "Configuring Nginx to listen on port 80..."
+    sed -i '/listen 80 default_server;/d' "$NGINX_CONF"
+    sed -i '/listen \[::\]:80 default_server;/d' "$NGINX_CONF"
+
+    # Add the necessary 'listen' directives
+    echo "server {
+        listen 80 default_server;
+        listen [::]:80 default_server;
+        root /var/www/html;
+        index index.html;
+        server_name _;
+        location / {
+            try_files \$uri \$uri/ =404;
+        }
+    }" > "$NGINX_CONF"
+fi
+
+# Restart Nginx to apply the changes
 echo "Restarting Nginx..."
 systemctl restart nginx
 
-# Verify Nginx is running and listening on port 80
-echo "Checking if Nginx is running and listening on port 80..."
+# Verify if Nginx is running and listening on port 80
+echo "Checking if Nginx is listening on port 80..."
 if ss -tuln | grep -q ':80'; then
-    echo "Nginx is listening on port 80."
+    echo "Nginx is successfully listening on port 80."
 else
-    echo "Nginx is not listening on port 80. Something went wrong."
+    echo "Nginx is not listening on port 80. Please check the configuration."
+    exit 1
 fi
