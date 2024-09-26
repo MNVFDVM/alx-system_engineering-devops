@@ -1,57 +1,6 @@
 #!/usr/bin/env bash
-# This script ensures Nginx is installed, configured to listen on port 80, and restarted
+# Configures an Nginx server to listen on port 80.
 
-# Ensure the script is run with root privileges
-if [ "$(id -u)" -ne 0 ]; then
-    echo "This script must be run as root" >&2
-    exit 1
-fi
-
-# Install Nginx if not already installed
-if ! command -v nginx &> /dev/null; then
-    echo "Installing Nginx..."
-    apt-get update && apt-get install -y nginx
-fi
-
-# Define the Nginx configuration file
-NGINX_CONF="/etc/nginx/sites-available/default"
-
-# Ensure Nginx is configured to listen on port 80
-if [ -f "$NGINX_CONF" ]; then
-    echo "Configuring Nginx to listen on port 80..."
-    
-    # Modify the configuration to listen on port 80 for both IPv4 and IPv6
-    sed -i '/listen 80 default_server;/d' "$NGINX_CONF"
-    sed -i '/listen \[::\]:80 default_server;/d' "$NGINX_CONF"
-
-    echo "
-    server {
-        listen 80 default_server;
-        listen [::]:80 default_server;
-        root /var/www/html;
-        index index.html;
-        server_name _;
-        location / {
-            try_files \$uri \$uri/ =404;
-        }
-    }
-    " > "$NGINX_CONF"
-else
-    echo "Nginx configuration file not found at $NGINX_CONF" >&2
-    exit 1
-fi
-
-# Restart Nginx to apply the changes
-echo "Restarting Nginx..."
-if ! service nginx restart; then
-    echo "Failed to restart Nginx. Please check the configuration." >&2
-    exit 1
-fi
-
-# Check if Nginx is listening on port 80
-if ss -tuln | grep -q ':80'; then
-    echo "Nginx is successfully listening on port 80."
-else
-    echo "Nginx is not listening on port 80. Please check the configuration." >&2
-    exit 1
-fi
+rm /etc/nginx/sites-enabled/default
+ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+service nginx restart
